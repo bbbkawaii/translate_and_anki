@@ -2,6 +2,7 @@
   'use strict';
   let selectedText = '', dotEl = null, tipEl = null, tipVisible = false, abortCtrl = null;
   let tipAnchorX = 0, tipAnchorY = 0;
+  let hoverDot = false, hoverTip = false, hideTimer = null;
   let cfg = { apiUrl: '', apiKey: '', model: 'gpt-3.5-turbo', enableAI: true };
 
   const DOT_PAD = 6, TIP_PAD = 8, DOT_OX = 5, DOT_OY = -10, TIP_OY = 10;
@@ -14,6 +15,12 @@
     const width = vv ? vv.width : window.innerWidth;
     const height = vv ? vv.height : window.innerHeight;
     return { left, top, right: left + width, bottom: top + height, width, height };
+  }
+
+  function cancelHide() { if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; } }
+  function scheduleHide() {
+    cancelHide();
+    hideTimer = setTimeout(() => { if (!hoverDot && !hoverTip) hideTip(); }, 300);
   }
 
   function loadCfg() {
@@ -36,8 +43,8 @@
     if (tipEl) return tipEl;
     tipEl = document.createElement('div'); tipEl.id = 'translate-tooltip';
     document.body.appendChild(tipEl);
-    tipEl.onmouseenter = () => { tipVisible = true; };
-    tipEl.onmouseleave = () => { hideTip(); };
+    tipEl.onmouseenter = () => { hoverTip = true; tipVisible = true; cancelHide(); };
+    tipEl.onmouseleave = () => { hoverTip = false; scheduleHide(); };
     return tipEl;
   }
 
@@ -51,7 +58,7 @@
     top = clamp(top, v.top + DOT_PAD, v.bottom - h - DOT_PAD);
     d.style.left = left + 'px'; d.style.top = top + 'px';
   }
-  function hideDot() { if (dotEl) dotEl.style.display = 'none'; }
+  function hideDot() { hoverDot = false; if (dotEl) dotEl.style.display = 'none'; }
   function positionTip() {
     if (!tipEl || !tipVisible) return;
     const v = viewBox();
@@ -79,7 +86,7 @@
     positionTip();
   }
   function updateTip(c) { if (tipEl && tipVisible) { tipEl.innerHTML = c; positionTip(); } }
-  function hideTip() { tipVisible = false; if (abortCtrl) { abortCtrl.abort(); abortCtrl = null; } setTimeout(() => { if (!tipVisible && tipEl) tipEl.style.display = 'none'; }, 100); }
+  function hideTip() { tipVisible = false; hoverTip = false; cancelHide(); if (abortCtrl) { abortCtrl.abort(); abortCtrl = null; } setTimeout(() => { if (!tipVisible && tipEl) tipEl.style.display = 'none'; }, 100); }
 
   function getSelectionRect(sel) {
     if (!sel || !sel.rangeCount) return null;
@@ -155,6 +162,7 @@
 
   async function onDotEnter() {
     if (!selectedText) return;
+    hoverDot = true; cancelHide();
     tipVisible = true;
     const rect = dotEl.getBoundingClientRect();
     const v = viewBox();
@@ -168,7 +176,7 @@
     }
   }
 
-  function onDotLeave() { hideTip(); }
+  function onDotLeave() { hoverDot = false; scheduleHide(); }
 
   document.addEventListener('mouseup', (e) => {
     if (e.target.id === 'translate-dot' || e.target.closest('#translate-tooltip')) return;
