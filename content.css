@@ -1,0 +1,131 @@
+/* 划词翻译插件样式 - Spotify风格 */
+
+/* 小圆点按钮 */
+#translate-dot {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  background: #1DB954;
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2147483647;
+  box-shadow: 0 2px 12px rgba(29, 185, 84, 0.5);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  font-size: 12px;
+  color: #000;
+  font-weight: bold;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  user-select: none;
+}
+
+#translate-dot:hover {
+  transform: scale(1.15);
+  background: #1ed760;
+  box-shadow: 0 4px 20px rgba(29, 185, 84, 0.7);
+}
+
+/* 翻译弹窗 - 毛玻璃效果 */
+#translate-tooltip {
+  position: absolute;
+  min-width: 220px;
+  max-width: 420px;
+  max-height: 450px;
+  overflow: hidden;
+  background: rgba(18, 18, 18, 0.45);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  display: none;
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 翻译内容区域 */
+.translate-content {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 原文 */
+.translate-original {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  word-break: break-word;
+}
+
+/* 翻译结果 */
+.translate-result {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+/* 加载状态 */
+.translate-loading {
+  padding: 14px 16px;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.translate-loading::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(29, 185, 84, 0.3);
+  border-top-color: #1DB954;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* AI解释区域 */
+.ai-section {
+  padding: 14px 16px;
+  background: rgba(29, 185, 84, 0.08);
+  border-top: 1px solid rgba(29, 185, 84, 0.15);
+}
+
+.ai-loading {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-loading .ai-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(29, 185, 84, 0.3);
+  border-top-color: #1DB954;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+.ai-content {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.8;
+}
+
+.ai-label {
+  color: #1DB954;
+  font-weight: 600;
+}

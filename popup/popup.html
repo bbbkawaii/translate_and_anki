@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>划词翻译设置</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>划词翻译设置</h1>
+
+    <div class="section">
+      <h2>AI 解释设置</h2>
+      <p class="hint">配置 OpenAI 兼容的 API 来获取详细词义解释</p>
+
+      <div class="form-group">
+        <label for="apiUrl">API URL</label>
+        <input type="text" id="apiUrl" placeholder="https://api.openai.com/v1/chat/completions">
+      </div>
+
+      <div class="form-group">
+        <label for="apiKey">API Key</label>
+        <input type="password" id="apiKey" placeholder="sk-...">
+      </div>
+
+      <div class="form-group">
+        <label for="model">模型名称</label>
+        <input type="text" id="model" placeholder="gpt-3.5-turbo">
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="enableAI" checked>
+          启用 AI 解释
+        </label>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="saveBtn" class="btn-primary">保存设置</button>
+      <span id="status" class="status"></span>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
