@@ -32,8 +32,9 @@
   position: absolute;
   min-width: 220px;
   max-width: 420px;
-  max-height: 450px;
-  overflow: hidden;
+  max-height: min(450px, calc(100vh - 16px));
+  overflow: auto;
+  overscroll-behavior: contain;
   background: rgba(18, 18, 18, 0.45);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);

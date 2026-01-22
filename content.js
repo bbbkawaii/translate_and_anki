@@ -1,7 +1,20 @@
 (function() {
   'use strict';
   let selectedText = '', dotEl = null, tipEl = null, tipVisible = false, abortCtrl = null;
+  let tipAnchorX = 0, tipAnchorY = 0;
   let cfg = { apiUrl: '', apiKey: '', model: 'gpt-3.5-turbo', enableAI: true };
+
+  const DOT_PAD = 6, TIP_PAD = 8, DOT_OX = 5, DOT_OY = -10, TIP_OY = 10;
+
+  function clamp(n, min, max) { if (max < min) return min; return Math.min(Math.max(n, min), max); }
+  function viewBox() {
+    const vv = window.visualViewport;
+    const left = vv ? vv.pageLeft : window.scrollX;
+    const top = vv ? vv.pageTop : window.scrollY;
+    const width = vv ? vv.width : window.innerWidth;
+    const height = vv ? vv.height : window.innerHeight;
+    return { left, top, right: left + width, bottom: top + height, width, height };
+  }
 
   function loadCfg() {
     if (chrome.storage && chrome.storage.sync) {
@@ -28,11 +41,57 @@
     return tipEl;
   }
 
-  function showDot(x, y) { const d = makeDot(); d.style.left = (x+5)+'px'; d.style.top = (y-10)+'px'; d.style.display = 'flex'; }
+  function showDot(x, y) {
+    const d = makeDot();
+    d.style.display = 'flex';
+    const v = viewBox();
+    const w = d.offsetWidth || 26, h = d.offsetHeight || 26;
+    let left = x + DOT_OX, top = y + DOT_OY;
+    left = clamp(left, v.left + DOT_PAD, v.right - w - DOT_PAD);
+    top = clamp(top, v.top + DOT_PAD, v.bottom - h - DOT_PAD);
+    d.style.left = left + 'px'; d.style.top = top + 'px';
+  }
   function hideDot() { if (dotEl) dotEl.style.display = 'none'; }
-  function showTip(x, y, c) { const t = makeTip(); t.innerHTML = c; t.style.left = x+'px'; t.style.top = (y+25)+'px'; t.style.display = 'block'; tipVisible = true; }
-  function updateTip(c) { if (tipEl && tipVisible) tipEl.innerHTML = c; }
+  function positionTip() {
+    if (!tipEl || !tipVisible) return;
+    const v = viewBox();
+    const maxW = Math.max(160, Math.min(420, v.width - TIP_PAD * 2));
+    const minW = Math.min(220, maxW);
+    tipEl.style.maxWidth = maxW + 'px';
+    tipEl.style.minWidth = minW + 'px';
+    const w = tipEl.offsetWidth || minW, h = tipEl.offsetHeight || 0;
+    const dotH = (dotEl && dotEl.style.display !== 'none' ? dotEl.offsetHeight : 0) || 26;
+    let left = clamp(tipAnchorX, v.left + TIP_PAD, v.right - w - TIP_PAD);
+    const topBelow = tipAnchorY + TIP_OY;
+    const topAbove = (tipAnchorY - dotH) - h - TIP_OY;
+    let top = topBelow;
+    if (topBelow + h > v.bottom - TIP_PAD && topAbove >= v.top + TIP_PAD) top = topAbove;
+    top = clamp(top, v.top + TIP_PAD, v.bottom - h - TIP_PAD);
+    tipEl.style.left = left + 'px';
+    tipEl.style.top = top + 'px';
+  }
+  function showTip(x, y, c) {
+    const t = makeTip();
+    tipAnchorX = x; tipAnchorY = y;
+    t.innerHTML = c;
+    t.style.display = 'block';
+    tipVisible = true;
+    positionTip();
+  }
+  function updateTip(c) { if (tipEl && tipVisible) { tipEl.innerHTML = c; positionTip(); } }
   function hideTip() { tipVisible = false; if (abortCtrl) { abortCtrl.abort(); abortCtrl = null; } setTimeout(() => { if (!tipVisible && tipEl) tipEl.style.display = 'none'; }, 100); }
+
+  function getSelectionRect(sel) {
+    if (!sel || !sel.rangeCount) return null;
+    try {
+      const range = sel.getRangeAt(0);
+      const rects = range.getClientRects();
+      if (rects && rects.length) return rects[rects.length - 1];
+      const rect = range.getBoundingClientRect();
+      if (rect && (rect.width || rect.height)) return rect;
+    } catch (e) {}
+    return null;
+  }
 
   function getLang(t) { return /[\u4e00-\u9fa5]/.test(t) ? 'en' : 'zh-CN'; }
   function getSrcLang(t) { return /[\u4e00-\u9fa5]/.test(t) ? 'zh-CN' : 'en-US'; }
@@ -98,7 +157,8 @@
     if (!selectedText) return;
     tipVisible = true;
     const rect = dotEl.getBoundingClientRect();
-    const x = rect.left + window.scrollX, y = rect.bottom + window.scrollY;
+    const v = viewBox();
+    const x = rect.left + v.left, y = rect.bottom + v.top;
     showTip(x, y, '<div class="translate-loading">翻译中...</div>');
     speak(selectedText, getSrcLang(selectedText));
     const tr = await trans(selectedText);
@@ -116,8 +176,11 @@
       const sel = window.getSelection(), txt = sel.toString().trim();
       if (txt && txt.length > 0 && txt.length < 1000) {
         selectedText = txt;
-        const rng = sel.getRangeAt(0), rect = rng.getBoundingClientRect();
-        showDot(rect.right + window.scrollX, rect.top + window.scrollY);
+        const rect = getSelectionRect(sel);
+        if (rect) {
+          const v = viewBox();
+          showDot(rect.right + v.left, rect.bottom + v.top);
+        } else { hideDot(); }
       } else { selectedText = ''; hideDot(); hideTip(); }
     }, 10);
   });
