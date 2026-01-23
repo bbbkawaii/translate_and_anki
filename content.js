@@ -3,6 +3,7 @@
   let selectedText = '', dotEl = null, tipEl = null, tipVisible = false, abortCtrl = null;
   let tipAnchorX = 0, tipAnchorY = 0;
   let hoverDot = false, hoverTip = false, hideTimer = null;
+  let selTimer = null, lastUpX = 0, lastUpY = 0, lastUpAt = 0;
   let cfg = { apiUrl: '', apiKey: '', model: 'gpt-3.5-turbo', enableAI: true };
 
   const DOT_PAD = 6, TIP_PAD = 8, DOT_OX = 5, DOT_OY = -10, TIP_OY = 10;
@@ -34,7 +35,7 @@
   function makeDot() {
     if (dotEl) return dotEl;
     dotEl = document.createElement('div'); dotEl.id = 'translate-dot'; dotEl.innerHTML = '译';
-    document.body.appendChild(dotEl);
+    (document.body || document.documentElement).appendChild(dotEl);
     dotEl.onmouseenter = onDotEnter; dotEl.onmouseleave = onDotLeave;
     return dotEl;
   }
@@ -42,7 +43,7 @@
   function makeTip() {
     if (tipEl) return tipEl;
     tipEl = document.createElement('div'); tipEl.id = 'translate-tooltip';
-    document.body.appendChild(tipEl);
+    (document.body || document.documentElement).appendChild(tipEl);
     tipEl.onmouseenter = () => { hoverTip = true; tipVisible = true; cancelHide(); };
     tipEl.onmouseleave = () => { hoverTip = false; scheduleHide(); };
     return tipEl;
@@ -98,6 +99,53 @@
       if (rect && (rect.width || rect.height)) return rect;
     } catch (e) {}
     return null;
+  }
+
+  function isUIEventTarget(t) {
+    if (!t) return false;
+    if (t === dotEl || t === tipEl) return true;
+    if (!(t instanceof Element)) return false;
+    return t.id === 'translate-dot' || !!t.closest('#translate-dot,#translate-tooltip');
+  }
+
+  function getInputSelectionEl() {
+    const el = document.activeElement;
+    if (!el) return null;
+    if (el.tagName === 'TEXTAREA') return el;
+    if (el.tagName === 'INPUT') {
+      const type = (el.getAttribute('type') || '').toLowerCase();
+      if (!type || type === 'text' || type === 'search' || type === 'url' || type === 'email' || type === 'tel' || type === 'password') return el;
+    }
+    return null;
+  }
+
+  function getSelectedInfo() {
+    const sel = window.getSelection ? window.getSelection() : null;
+    const text = (sel ? sel.toString() : '').trim();
+    if (text) return { text, rect: getSelectionRect(sel) };
+    const el = getInputSelectionEl();
+    if (el && typeof el.selectionStart === 'number' && typeof el.selectionEnd === 'number' && el.selectionEnd > el.selectionStart) {
+      const t = (el.value || '').slice(el.selectionStart, el.selectionEnd).trim();
+      if (t) return { text: t, rect: el.getBoundingClientRect() };
+    }
+    return { text: '', rect: null };
+  }
+
+  function updateFromSelection(fallbackX, fallbackY) {
+    const { text, rect } = getSelectedInfo();
+    if (text && text.length > 0 && text.length < 1000) {
+      if (selectedText && selectedText !== text) hideTip();
+      selectedText = text;
+      const v = viewBox();
+      if (rect) showDot(rect.right + v.left, rect.bottom + v.top);
+      else if (typeof fallbackX === 'number' && typeof fallbackY === 'number') showDot(fallbackX + v.left, fallbackY + v.top);
+      else hideDot();
+    } else { selectedText = ''; hideDot(); hideTip(); }
+  }
+
+  function scheduleSelectionUpdate(delay, fallbackX, fallbackY) {
+    if (selTimer) clearTimeout(selTimer);
+    selTimer = setTimeout(() => { selTimer = null; updateFromSelection(fallbackX, fallbackY); }, delay);
   }
 
   function getLang(t) { return /[\u4e00-\u9fa5]/.test(t) ? 'en' : 'zh-CN'; }
@@ -178,25 +226,37 @@
 
   function onDotLeave() { hoverDot = false; scheduleHide(); }
 
+  document.addEventListener('pointerup', (e) => {
+    if (isUIEventTarget(e.target)) return;
+    lastUpX = e.clientX; lastUpY = e.clientY;
+    lastUpAt = Date.now();
+    scheduleSelectionUpdate(10, lastUpX, lastUpY);
+  }, true);
+
   document.addEventListener('mouseup', (e) => {
-    if (e.target.id === 'translate-dot' || e.target.closest('#translate-tooltip')) return;
-    setTimeout(() => {
-      const sel = window.getSelection(), txt = sel.toString().trim();
-      if (txt && txt.length > 0 && txt.length < 1000) {
-        selectedText = txt;
-        const rect = getSelectionRect(sel);
-        if (rect) {
-          const v = viewBox();
-          showDot(rect.right + v.left, rect.bottom + v.top);
-        } else { hideDot(); }
-      } else { selectedText = ''; hideDot(); hideTip(); }
-    }, 10);
-  });
+    if (isUIEventTarget(e.target)) return;
+    lastUpX = e.clientX; lastUpY = e.clientY;
+    lastUpAt = Date.now();
+    scheduleSelectionUpdate(10, lastUpX, lastUpY);
+  }, true);
+
+  document.addEventListener('selectionchange', () => {
+    if (Date.now() - lastUpAt < 150) return;
+    scheduleSelectionUpdate(80, lastUpX, lastUpY);
+  }, true);
+
+  document.addEventListener('pointerdown', (e) => {
+    if (isUIEventTarget(e.target)) return;
+    hideDot(); hideTip(); speechSynthesis.cancel();
+  }, true);
 
   document.addEventListener('mousedown', (e) => {
-    if (e.target.id === 'translate-dot' || e.target.closest('#translate-tooltip')) return;
+    if (isUIEventTarget(e.target)) return;
     hideDot(); hideTip(); speechSynthesis.cancel();
-  });
+  }, true);
 
-  document.addEventListener('scroll', () => { hideDot(); hideTip(); });
+  document.addEventListener('scroll', (e) => {
+    if (isUIEventTarget(e.target)) return;
+    hideDot(); hideTip();
+  }, true);
 })();
